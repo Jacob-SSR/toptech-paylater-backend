@@ -1,0 +1,121 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ======================
+// ENUMS
+// ======================
+enum ServiceType {
+  DOWN_PAYMENT // วางดาวน์
+  SAVINGS_PLAN // ออมดาวน์ → ผ่อนต่อ
+  FULL_SAVINGS // ออมครบรับของ
+  PROMOTION // ซื้อสดราคาพิเศษ
+  INSTALLMENT // ผ่อนชำระ
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum SalaryRange {
+  RANGE_0_5000
+  RANGE_5001_15000
+  RANGE_15001_20000
+  RANGE_20000_PLUS
+}
+
+enum EducationLevel {
+  HIGH_SCHOOL
+  VOCATIONAL_CERT
+  HIGHER_VOCATIONAL
+  DIPLOMA
+  BACHELOR
+  OTHER
+}
+
+// ======================
+// MODELS
+// ======================
+
+model Customer {
+  id         Int       @id @default(autoincrement())
+  firstName  String
+  lastName   String
+  email      String?   @unique
+  phone      String
+  nationalId String?   @unique
+  birthDate  DateTime?
+  gender     Gender?
+  age        Int?
+
+  occupation String?
+  jobDetail  String?
+  income     SalaryRange?
+  education  EducationLevel?
+
+  addresses    Address[]
+  paylaterApps PaylaterApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Address {
+  id          Int      @id @default(autoincrement())
+  customer    Customer @relation(fields: [customerId], references: [id])
+  customerId  Int
+  addressLine String
+  subdistrict String
+  district    String
+  province    String
+  postalCode  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Product {
+  id      Int     @id @default(autoincrement())
+  brand   String
+  model   String
+  storage String
+  color   String
+  price   Decimal @db.Decimal(10, 2)
+
+  applications PaylaterApplication[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PaylaterApplication {
+  id            Int         @id @default(autoincrement())
+  customer      Customer    @relation(fields: [customerId], references: [id])
+  customerId    Int
+  product       Product     @relation(fields: [productId], references: [id])
+  productId     Int
+  serviceType   ServiceType
+  referralCode  String?
+  downPayment   Decimal?    @db.Decimal(10, 2)
+  installments  Int?
+  monthlyAmount Decimal?    @db.Decimal(10, 2)
+  status        OrderStatus @default(PENDING)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
