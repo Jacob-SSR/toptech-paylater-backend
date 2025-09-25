@@ -1,78 +1,47 @@
 const prisma = require("../models/prisma");
+const axios = require("axios");
 
 exports.createApplication = async (req, res) => {
   try {
-    const app = await prisma.paylaterApplication.create({
-      data: req.body,
+    const {
+      customerId,
+      productId,
+      serviceType,
+      downPayment,
+      installments,
+      monthlyAmount,
+      referralCode,
+    } = req.body;
+
+    const application = await prisma.paylaterApplication.create({
+      data: {
+        customerId,
+        productId,
+        serviceType,
+        downPayment,
+        installments,
+        monthlyAmount,
+        referralCode,
+      },
       include: { customer: true, product: true },
     });
 
-    if (app.referralCode) {
-      const affiliate = await prisma.affiliate.findUnique({
-        where: { code: app.referralCode },
-      });
-
-      if (affiliate) {
-        const order = await prisma.order.create({
-          data: {
-            lead: {
-              connectOrCreate: {
-                where: {
-                  affiliateId_email: {
-                    affiliateId: affiliate.id,
-                    email:
-                      app.customer.email ||
-                      `${app.customer.phone}@placeholder.com`,
-                  },
-                },
-                create: {
-                  affiliateId: affiliate.id,
-                  name: `${app.customer.firstName} ${app.customer.lastName}`,
-                  email:
-                    app.customer.email ||
-                    `${app.customer.phone}@placeholder.com`,
-                  phone: app.customer.phone,
-                  sourceCampaign: "Paylater",
-                },
-              },
-            },
-            totalAmount: app.product.price,
-            downPayment: app.downPayment || 0,
-            installments: app.installments || 1,
-            status: "APPROVED",
-          },
+    if (referralCode) {
+      try {
+        await axios.post(`${process.env.AFFILIATE_API_URL}/affiliate/lead`, {
+          referralCode,
+          name: `${application.customer.firstName} ${application.customer.lastName}`,
+          email: application.customer.email,
+          phone: application.customer.phone,
         });
-
-        const rule = await prisma.commissionRule.findFirst({
-          where: { active: true },
-        });
-
-        let commissionAmount = 0;
-        if (rule) {
-          if (rule.type === "FLAT") {
-            commissionAmount = parseFloat(rule.parameters?.flat || 0);
-          } else if (rule.type === "PERCENTAGE") {
-            commissionAmount =
-              (parseFloat(app.product.price) *
-                parseFloat(rule.parameters?.percent || 0)) /
-              100;
-          }
-        }
-
-        await prisma.commission.create({
-          data: {
-            orderId: order.id,
-            affiliateId: affiliate.id,
-            ruleId: rule ? rule.id : null,
-            amount: commissionAmount,
-            status: "PENDING",
-          },
-        });
+      } catch (err) {
+        console.error("Error calling Affiliate Service:", err.message);
       }
     }
 
-    res.status(201).json(app);
+    res.status(201).json({ message: "Application created", application });
   } catch (err) {
+    console.error("CREATE APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -84,6 +53,7 @@ exports.getApplications = async (req, res) => {
     });
     res.json(apps);
   } catch (err) {
+    console.error("GET APPLICATIONS ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -97,6 +67,7 @@ exports.getApplication = async (req, res) => {
     if (!app) return res.status(404).json({ error: "Application not found" });
     res.json(app);
   } catch (err) {
+    console.error("GET APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -109,6 +80,7 @@ exports.updateApplication = async (req, res) => {
     });
     res.json(app);
   } catch (err) {
+    console.error("UPDATE APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -120,6 +92,7 @@ exports.deleteApplication = async (req, res) => {
     });
     res.json({ message: "Application deleted" });
   } catch (err) {
+    console.error("DELETE APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
