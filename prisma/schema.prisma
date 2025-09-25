@@ -48,6 +48,11 @@ enum EducationLevel {
   OTHER
 }
 
+enum ProductCondition {
+  NEW // มือ 1
+  USED // มือ 2
+}
+
 // ======================
 // MODELS
 // ======================
@@ -90,17 +95,37 @@ model Address {
 }
 
 model Product {
-  id      Int     @id @default(autoincrement())
-  brand   String
-  model   String
-  storage String
-  color   String
-  price   Decimal @db.Decimal(10, 2)
+  id        Int              @id @default(autoincrement())
+  sku       String           @unique
+  category  String
+  brand     String
+  model     String
+  storage   String?
+  color     String?
+  name      String
+  priceCash Decimal          @db.Decimal(10, 2)
+  condition ProductCondition @default(NEW)
 
-  applications PaylaterApplication[]
+  plans ProductPlan[]
+
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  PaylaterApplication PaylaterApplication[]
+}
+
+model ProductPlan {
+  id        Int     @id @default(autoincrement())
+  product   Product @relation(fields: [productId], references: [id])
+  productId Int
+  term      Int
+  type      String
+  price     Decimal @db.Decimal(10, 2)
+  monthly   Decimal @db.Decimal(10, 2)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@unique([productId, term])
 }
 
 model PaylaterApplication {
