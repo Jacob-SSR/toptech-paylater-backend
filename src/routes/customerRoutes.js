@@ -9,9 +9,9 @@ const {
 } = require("../controllers/customerController");
 
 customerRouter.post("/customer", createCustomer);
-customerRouter.get("/customer", getCustomers);
-customerRouter.get("/customer:id", getCustomer);
-customerRouter.put("/customer:id", updateCustomer);
-customerRouter.delete("/customer:id", deleteCustomer);
+customerRouter.get("/customers", getCustomers);
+customerRouter.get("/customer/:id", getCustomer);
+customerRouter.put("/customer/:id", updateCustomer);
+customerRouter.delete("/customer/:id", deleteCustomer);
 
 module.exports = customerRouter;

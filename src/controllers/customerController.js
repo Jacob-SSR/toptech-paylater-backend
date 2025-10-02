@@ -2,10 +2,50 @@ const prisma = require("../models/prisma");
 
 exports.createCustomer = async (req, res) => {
   try {
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      nationalId,
+      birthDate,
+      gender,
+      age,
+      occupation,
+      jobDetail,
+      income,
+      education,
+      addresses = [],
+    } = req.body;
+
     const customer = await prisma.customer.create({
-      data: req.body,
+      data: {
+        firstName,
+        lastName,
+        email,
+        phone,
+        nationalId,
+        birthDate: birthDate ? new Date(birthDate) : null,
+        gender: gender || null,
+        age: age ? parseInt(age) : null,
+        occupation: occupation || null,
+        jobDetail: jobDetail || null,
+        income: income || null,
+        education: education || null,
+        addresses: {
+          create: addresses.map((addr) => ({
+            addressLine: addr.addressLine,
+            subdistrict: addr.subdistrict,
+            district: addr.district,
+            province: addr.province,
+            postalCode: addr.postalCode,
+          })),
+        },
+      },
+      include: { addresses: true },
     });
-    res.json(customer);
+
+    res.status(201).json(customer);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

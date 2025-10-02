@@ -13,15 +13,21 @@ exports.createApplication = async (req, res) => {
       referralCode,
     } = req.body;
 
+    if (!customerId || !productId) {
+      return res.status(400).json({
+        error: "ต้องเลือกสินค้า (productId) และลูกค้า (customerId) ก่อน",
+      });
+    }
+
     const application = await prisma.paylaterApplication.create({
       data: {
-        customerId,
-        productId,
+        customerId: parseInt(customerId),
+        productId: parseInt(productId),
         serviceType,
-        downPayment,
-        installments,
-        monthlyAmount,
-        referralCode,
+        downPayment: downPayment ? new Prisma.Decimal(downPayment) : null,
+        installments: installments ? parseInt(installments) : null,
+        monthlyAmount: monthlyAmount ? new Prisma.Decimal(monthlyAmount) : null,
+        referralCode: referralCode || null,
       },
       include: { customer: true, product: true },
     });
@@ -35,13 +41,12 @@ exports.createApplication = async (req, res) => {
           phone: application.customer.phone,
         });
       } catch (err) {
-        console.error("Error calling Affiliate Service:", err.message);
+        res.status(500).json({ error: err.message });
       }
     }
 
-    res.status(201).json({ message: "Application created", application });
+    res.status(201).json({ data: application });
   } catch (err) {
-    console.error("CREATE APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -51,9 +56,8 @@ exports.getApplications = async (req, res) => {
     const apps = await prisma.paylaterApplication.findMany({
       include: { customer: true, product: true },
     });
-    res.json(apps);
+    res.json({ data: apps });
   } catch (err) {
-    console.error("GET APPLICATIONS ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -65,22 +69,31 @@ exports.getApplication = async (req, res) => {
       include: { customer: true, product: true },
     });
     if (!app) return res.status(404).json({ error: "Application not found" });
-    res.json(app);
+    res.json({ data: app });
   } catch (err) {
-    console.error("GET APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
 
 exports.updateApplication = async (req, res) => {
   try {
+    const { status, downPayment, installments, monthlyAmount } = req.body;
+
     const app = await prisma.paylaterApplication.update({
       where: { id: parseInt(req.params.id) },
-      data: req.body,
+      data: {
+        ...(status && { status }),
+        ...(downPayment && { downPayment: new Prisma.Decimal(downPayment) }),
+        ...(installments && { installments: parseInt(installments) }),
+        ...(monthlyAmount && {
+          monthlyAmount: new Prisma.Decimal(monthlyAmount),
+        }),
+      },
+      include: { customer: true, product: true },
     });
-    res.json(app);
+
+    res.json({ data: app });
   } catch (err) {
-    console.error("UPDATE APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -92,7 +105,6 @@ exports.deleteApplication = async (req, res) => {
     });
     res.json({ message: "Application deleted" });
   } catch (err) {
-    console.error("DELETE APPLICATION ERROR:", err);
     res.status(500).json({ error: err.message });
   }
 };
